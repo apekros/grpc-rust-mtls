@@ -1,3 +1,5 @@
+mod health_tests;
+
 use example::{
     example_server::{Example, ExampleServer},
     HelloRequest, HelloResponse,
@@ -24,9 +26,7 @@ impl Example for ExampleService {
         }))
     }
 }
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start_service() {
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
 
     health_reporter
@@ -40,6 +40,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(ExampleServer::new(example_service))
         .add_service(health_service)
         .serve(address)
-        .await?;
+        .await
+        .expect("STart service failed.");
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    start_service().await;
     Ok(())
 }
