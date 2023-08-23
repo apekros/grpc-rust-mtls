@@ -6,7 +6,7 @@ use example::{
     HelloRequest, HelloResponse,
 };
 
-use tonic::transport::{Identity, ServerTlsConfig};
+use tonic::transport::{Certificate, Identity, ServerTlsConfig};
 use tonic::{transport::Server, Request, Response, Status};
 
 pub mod example {
@@ -23,7 +23,7 @@ impl Example for ExampleService {
         request: Request<HelloRequest>,
     ) -> Result<Response<HelloResponse>, Status> {
         let r = request.into_inner();
-        Ok(Response::new(example::HelloResponse {
+        Ok(Response::new(HelloResponse {
             message: { format!("Hello {}", r.name) },
         }))
     }
@@ -39,12 +39,17 @@ pub async fn start_service() {
     let address = "[::1]:8080".parse().unwrap();
     let example_service = ExampleService::default();
 
-    let data_dir = std::path::PathBuf::from_iter([std::env!("CARGO_MANIFEST_DIR"), "tls"]);
+    let data_dir = std::path::PathBuf::from_iter([env!("CARGO_MANIFEST_DIR"), "tls"]);
     let cert = std::fs::read_to_string(data_dir.join("server.pem")).unwrap();
     let key = std::fs::read_to_string(data_dir.join("server.key")).unwrap();
     let server_identity = Identity::from_pem(cert, key);
 
-    let tls = ServerTlsConfig::new().identity(server_identity);
+    let client_ca_cert = std::fs::read_to_string(data_dir.join("client-ca.pem")).unwrap();
+    let client_ca_cert = Certificate::from_pem(client_ca_cert);
+
+    let tls = ServerTlsConfig::new()
+        .identity(server_identity)
+        .client_ca_root(client_ca_cert);
 
     Server::builder()
         .tls_config(tls)
